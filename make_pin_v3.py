@@ -46,8 +46,12 @@ def pixabay_photo(query, key, skip_ids=(), orientation="vertical", require=None)
     for h in r.json().get("hits", []):
         if h["id"] in skip_ids or h.get("imageHeight",0) < 1200: continue
         tags = h.get("tags","").lower()
-        if req and not any(w in tags for w in req): continue
+        tl = [t.strip() for t in tags.split(",")]
+        # the item must be one of the photo's MAIN subjects (first 4 tags), not a side mention
+        if req and not any(any(w in t for w in req) for t in tl[:4]): continue
         if any(b in tags for b in ("baby","child","children","kid","toddler","infant","boy","girl","newborn")): continue
+        animals = ("horse","cow","sheep","goat","pig","cattle","deer","bird","wildlife")
+        if any(a in tags for a in animals) and not any(a in " ".join(req) for a in animals): continue
         img = requests.get(h["largeImageURL"], timeout=60); img.raise_for_status()
         p = os.path.join(WORK, f"px_{h['id']}.jpg"); open(p,"wb").write(img.content)
         return {"id": h["id"], "path": p, "page": h.get("pageURL"), "tags": h.get("tags","")}
